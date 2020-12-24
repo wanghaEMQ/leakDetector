@@ -28,11 +28,11 @@ def on_modified():
         for line in f:
             line_now += 1
             if line_now > num_lines_before:
-                if b'nng_alloc' in line: # pattern a,nng_alloc,b
+                if b'dnng_alloc' in line: # pattern dnng_alloc,address,#
                     tlist = line.decode('gbk').split(',')
                     local_alloc_list.append(tlist[1])
                     local_alloc_dict[tlist[1]] = line_now
-                elif b'nng_free' in line: # pattern a,nng_free,b
+                elif b'dnng_free' in line: # pattern dnng_free,address,#
                     tlist = line.decode('gbk').split(',')
                     local_free_list.append(tlist[1])
                     local_free_dict[tlist[1]] = line_now
