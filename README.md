@@ -1,22 +1,29 @@
 # leakDetect
 
-A simple tool to find memery leak
+A simple tool to check memery leak.
+
+## Requires
+
++ ipcqueue
+
+Install requires by command as follows.
+
+```
+pip3 install ipcqueue
+```
 
 ## Usage
 
-"""
-
-python3 detectleak.py
-
-python3 -v (verbose)
-
-"""
+```
+python3 leakdetector.py
+```
 
 ## How it works?
 
-When you malloc OR free. print a log to file. and this
-script will recorder the address of variable.
+Using liblm we provide. When you call malloc or free function,
+it will send a msg to channel("/leakdetector"). Actually, this
+channel is posix msg queue provided by kernel.
 
-Type enter trigger the event that print the address
-you alloc but not freed in this durations.
+A server will receive msgs from the channel, do something like
+statistics.
 
