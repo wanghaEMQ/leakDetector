@@ -1,24 +1,39 @@
 from ipcqueue import posixmq
+from ipcqueue.serializers import RawSerializer
 
-lq = posixmq.Queue('/leakdetector') # leakage info queue
+# leakage info queue
+lq = posixmq.Queue('/leakdetector', maxmsgsize=31, serializer=RawSerializer) 
 ms = set() # memory address info set
 
 try:
     while True:
         t = lq.get()
-        print(t[0])
-        print(t[1])
-        if t[1] == 1:
-            ms.add(t[0])
-        elif t[1] == 0:
+        print(t[-1])
+        print(t)
+        if t[-1] == 49: # malloc/calloc
+            ms.add(t[:-2])
+        elif t[-1] == 48: # free
             try:
-                ms.remove(t[0])
+                ms.remove(t[:-2])
             except KeyError:
-                print("Invalid Address [0x%X]: ", end='')
-                print("Dangling pointer OR Heap use after free.")
+                print("Invalid Address [", end='')
+                print(t[:-2], end='')
+                print("]: Dangling pointer OR Heap use after free.")
                 lq.close()
                 lq.unlink()
                 exit(0)
+        elif t[-1] == 50: # realloc
+            try:
+                ms.remove(t[:14])
+                ms.add(t[15:29])
+            except KeyError:
+                print("Invalid Address [", end='')
+                print(t[:14], end='')
+                print("]: Dangling pointer OR Heap use after free.")
+                lq.close()
+                lq.unlink()
+                exit(0)
+
         else:
             print("Message Error.")
 except KeyboardInterrupt:
@@ -26,7 +41,7 @@ except KeyboardInterrupt:
         print("Find [%d] Leaks." %(len(ms)))
         while len(ms):
             e = ms.pop()
-            print("0x%X, " %(e), end='')
+            print(e, end='')
         print("")
     lq.close()
     lq.unlink()

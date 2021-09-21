@@ -1,28 +1,38 @@
 #include <stdio.h>
 #include <malloc.h>
+#include <errno.h>
+#include <mqueue.h>
+#include <string.h>
+
+#define MSG_MAX_SIZE (31)
+#define MSG_SIZE (16)
+#define MSG_SIZE_EX (31)
+#define MQ_NAME "/leakdetector"
 
 extern void *__libc_malloc(size_t size);
 extern void __libc_free(void *p);
 extern void *__libc_calloc(size_t nitems, size_t size);
 extern void *__libc_realloc(void *p, size_t size);
 
-int malloc_hook_active = 1;
-int free_hook_active = 1;
-int calloc_hook_active = 1;
-int realloc_hook_active = 1;
+static int malloc_hook_active = 1;
+static int free_hook_active = 1;
+static int calloc_hook_active = 1;
+static int realloc_hook_active = 1;
 
 void*
-my_malloc_hook (size_t size, void *caller)
+dl_malloc_hook (size_t size, void *caller)
 {
 	void *result;
 
-	// deactivate hooks for logging
+	// deactivate hooks
 	malloc_hook_active = 0;
 
 	result = malloc(size);
 
-	// do logging
-	fprintf(stdout, "malloc,%p,%ld\n", result, size);
+	mqd_t mq = mq_open(MQ_NAME, O_WRONLY);
+	char buf[MSG_SIZE];
+	sprintf(buf, "%p,1", result);
+	mq_send(mq, buf, MSG_SIZE, 0);
 
 	// reactivate hooks
 	malloc_hook_active = 1;
@@ -31,17 +41,19 @@ my_malloc_hook (size_t size, void *caller)
 }
 
 void*
-my_calloc_hook (size_t nitems, size_t size, void *caller)
+dl_calloc_hook (size_t nitems, size_t size, void *caller)
 {
 	void *result;
 
-	// deactivate hooks for logging
+	// deactivate hooks
 	calloc_hook_active = 0;
 
 	result = calloc(nitems, size);
 
-	// do logging
-	fprintf(stdout, "calloc,%p,%ld\n", result, size);
+	mqd_t mq = mq_open(MQ_NAME, O_WRONLY);
+	char buf[MSG_SIZE];
+	sprintf(buf, "%p,1", result);
+	mq_send(mq, buf, MSG_SIZE, 0);
 
 	// reactivate hooks
 	calloc_hook_active = 1;
@@ -50,17 +62,19 @@ my_calloc_hook (size_t nitems, size_t size, void *caller)
 }
 
 void*
-my_realloc_hook (void *ptr, size_t size, void *caller)
+dl_realloc_hook (void *ptr, size_t size, void *caller)
 {
 	void *result;
 
-	// deactivate hooks for logging
+	// deactivate hooks
 	realloc_hook_active = 0;
 
 	result = realloc(ptr, size);
 
-	// do logging
-	fprintf(stdout, "realloc,%p,%ld\n", result, size);
+	mqd_t mq = mq_open(MQ_NAME, O_WRONLY);
+	char buf[MSG_SIZE_EX];
+	sprintf(buf, "%p,%p,2", ptr, result);
+	mq_send(mq, buf, MSG_SIZE_EX, 0);
 
 	// reactivate hooks
 	malloc_hook_active = 1;
@@ -69,13 +83,15 @@ my_realloc_hook (void *ptr, size_t size, void *caller)
 }
 
 void
-my_free_hook (void *p, void *caller)
+dl_free_hook (void *p, void *caller)
 {
-	// deactivate hooks for logging
+	// deactivate hooks
 	free_hook_active = 0;
 
-	// do logging
-	fprintf(stdout, "free,%p\n", p);
+	mqd_t mq = mq_open(MQ_NAME, O_WRONLY);
+	char buf[MSG_SIZE];
+	sprintf(buf, "%p,0", p);
+	mq_send(mq, buf, MSG_SIZE, 0);
 
 	free(p);
 
@@ -90,7 +106,7 @@ malloc (size_t size)
 {
 	void *caller = __builtin_return_address(0);
 	if (malloc_hook_active)
-		return my_malloc_hook(size, caller);
+		return dl_malloc_hook(size, caller);
 	return __libc_malloc(size);
 }
 
@@ -99,7 +115,7 @@ calloc (size_t nitems, size_t size)
 {
 	void *caller = __builtin_return_address(0);
 	if (calloc_hook_active)
-		return my_calloc_hook(nitems, size, caller);
+		return dl_calloc_hook(nitems, size, caller);
 	return __libc_calloc(nitems, size);
 }
 
@@ -108,7 +124,7 @@ realloc (void *p, size_t size)
 {
 	void *caller = __builtin_return_address(0);
 	if (realloc_hook_active)
-		return my_realloc_hook(p, size, caller);
+		return dl_realloc_hook(p, size, caller);
 	return __libc_realloc(p, size);
 }
 
@@ -117,7 +133,7 @@ free (void *p)
 {
 	void *caller = __builtin_return_address(0);
 	if (free_hook_active)
-		return my_free_hook(p, caller);
+		return dl_free_hook(p, caller);
 	return __libc_free(p);
 }
 
