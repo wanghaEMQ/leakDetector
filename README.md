@@ -15,7 +15,7 @@ pip3 install ipcqueue
 ## Usage
 
 ```
-python3 leakdetector.py
+python3 leakdetector.py [...]
 ```
 
 ## How it works?
