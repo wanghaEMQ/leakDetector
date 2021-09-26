@@ -40,16 +40,15 @@ try:
                 exit(0)
         elif t[-1] == 50: # realloc
             try:
-                ms.remove(t[:14])
-                ms.add(t[15:29])
+                ms.remove(t[:(len(t)-3)//2])
+                ms.add(t[(len(t)-1)//2:len(t)-2])
             except KeyError:
                 print("Invalid Address [", end='')
-                print(t[:14], end='')
+                print(t[:(len(t)-3)//2], end='')
                 print("]: Dangling pointer OR Heap use after free.")
                 lq.close()
                 lq.unlink()
                 exit(0)
-
         else:
             print("Message Error.")
 except KeyboardInterrupt:

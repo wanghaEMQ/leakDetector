@@ -1,4 +1,4 @@
-# leakDetect
+# leakDetector
 
 A simple tool to check memery leak.
 

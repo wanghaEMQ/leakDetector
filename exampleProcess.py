@@ -1,11 +1,12 @@
 from ipcqueue import posixmq
+from ipcqueue.serializers import RawSerializer
 
-lq = posixmq.Queue('/leakdetector')
+lq = posixmq.Queue('/leakdetector', serializer=RawSerializer) 
 
-lq.put([0x2342, 1])
-lq.put([0x2343, 1])
-lq.put([0x2344, 1])
+lq.put(bytes('0x2342,1', 'ascii'))
+lq.put(bytes('0x2343,1', 'ascii'))
+lq.put(bytes('0x2344,1', 'ascii'))
 
-lq.put([0x2342, 0])
-lq.put([0x2344, 0])
+lq.put(bytes('0x2342,0', 'ascii'))
+lq.put(bytes('0x2344,0', 'ascii'))
 
